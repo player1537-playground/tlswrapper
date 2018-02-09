@@ -13,7 +13,11 @@ from asyncio import (
 )
 from functools import partial
 
-cert_file = Path.home() / '.tlswrapper.pem'
+certfile = Path.home() / '.tlswrapper.crt'
+keyfile = Path.home() / '.tlswrapper.key'
+
+
+wrap_socket = partial(wrap_socket, certfile=certfile, keyfile=keyfile)
 
 
 async def client_connected(client_reader, client_writer, upstream, reverse):
@@ -21,7 +25,7 @@ async def client_connected(client_reader, client_writer, upstream, reverse):
 	sock.connect(upstream)
 	
 	if reverse:
-		sock = wrap_socket(sock, certfile=cert_file)
+		sock = wrap_socket(sock)
 
 	upstream_reader, upstream_writer = await open_connection(
 		sock=sock,
@@ -62,13 +66,13 @@ async def client_connected(client_reader, client_writer, upstream, reverse):
 
 
 async def main(upstream, bind, reverse):
-	if not cert_file.exists():
-		print(f"Certificate file ({cert_file}) doesn't exist", file=stderr)
+	if not certfile.exists() or not keyfile.exists():
+		print(f"Certificate file ({certfile}) doesn't exist", file=stderr)
 		print()
 		print(f'Create it with:')
 		print(f'  openssl req -new -x509 \\')
-		print(f'    -keyout {cert_file} \\')
-		print(f'    -out {cert_file} \\')
+		print(f'    -keyout {keyfile} \\')
+		print(f'    -out {certfile} \\')
 		print(f'    -days 365 -nodes')
 		print()
 		exit(1)
@@ -79,7 +83,7 @@ async def main(upstream, bind, reverse):
 	sock.listen()
 	
 	if not reverse:
-		sock = wrap_socket(sock, certfile=cert_file, server_side=True)
+		sock = wrap_socket(sock, server_side=True)
 	
 	print(f'Listening at {bind[0]}:{bind[1]}')
 	
