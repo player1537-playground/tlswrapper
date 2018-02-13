@@ -44,13 +44,16 @@ async def client_connected(client_reader, client_writer, upstream, reverse):
 			[up_recv, cl_recv],
 			return_when=FIRST_COMPLETED,
 		)
-		
 
 		if up_recv in done:
 			if up_recv.exception() is not None:
 				break
 
 			data = up_recv.result()
+			if not data:
+				print('up_recv done', file=stderr)
+				break
+			
 			client_writer.write(data)
 			await client_writer.drain()
 			up_recv = None
@@ -60,6 +63,10 @@ async def client_connected(client_reader, client_writer, upstream, reverse):
 				break
 
 			data = cl_recv.result()
+			if not data:
+				print('cl_recv done', file=stderr)
+				break
+
 			upstream_writer.write(data)
 			await upstream_writer.drain()
 			cl_recv = None
@@ -85,7 +92,7 @@ async def main(upstream, bind, reverse):
 	if not reverse:
 		sock = wrap_socket(sock, server_side=True)
 	
-	print(f'Listening at {bind[0]}:{bind[1]}')
+	print(f'Listening at {bind[0]}:{bind[1]}', file=stderr)
 	
 	server = await start_server(
 	    partial(client_connected, upstream=upstream, reverse=reverse),
